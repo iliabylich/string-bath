@@ -1,6 +1,6 @@
 [package]
 name = "string-bath"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 description = "Fixed-size single-threaded no_std zero-dependency string pool implementation"
 license = "MIT"
