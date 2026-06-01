@@ -86,6 +86,13 @@ impl<const N: usize> Clone for StringRef<'_, N> {
     }
 }
 
+impl<const N: usize> AsRef<str> for StringRef<'_, N> {
+    #[inline]
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
 impl<const N: usize> Drop for StringRef<'_, N> {
     #[inline]
     fn drop(&mut self) {
