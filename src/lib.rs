@@ -38,7 +38,7 @@ pub use string_ref::StringRef;
 
 #[cfg(test)]
 mod tests {
-    use super::StringPool;
+    use super::{StringPool, StringPoolError};
     use core::cell::UnsafeCell;
 
     fn is_free<const N: usize, const M: usize>(pool: &StringPool<N, M>, idx: usize) -> bool {
@@ -114,5 +114,28 @@ mod tests {
             let slot = unsafe { &*UnsafeCell::raw_get(&pool.slots[0]) };
             assert_eq!(slot.str, [b'1', b'2', b'3', b'4', 0]);
         }
+    }
+
+    #[test]
+    fn test_zero_size_slots() {
+        let pool = StringPool::<1, 0>::new();
+
+        let err = pool.alloc("f").unwrap_err();
+        assert_eq!(
+            err,
+            StringPoolError::StringIsTooLong {
+                max_length: 0,
+                actual_length: 1
+            }
+        );
+
+        let err = pool.alloc("").unwrap_err();
+        assert_eq!(
+            err,
+            StringPoolError::StringIsTooLong {
+                max_length: 0,
+                actual_length: 0
+            }
+        );
     }
 }

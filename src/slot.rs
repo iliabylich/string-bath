@@ -30,8 +30,7 @@ impl<const LEN: usize> Slot<LEN> {
     pub(crate) fn acquire(&mut self, str: &str) -> Result<(), StringPoolError> {
         if LEN == 0 || str.len() >= LEN {
             return Err(StringPoolError::StringIsTooLong {
-                // SAFETY: we checked that `LEN: usize` is not 0, so it's safe to substract 1.
-                max_length: unsafe { LEN.unchecked_sub(1) },
+                max_length: LEN.saturating_sub(1),
                 actual_length: str.len(),
             });
         }
