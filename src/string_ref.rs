@@ -3,6 +3,7 @@ use core::panic::RefUnwindSafe;
 use crate::slot::Slot;
 
 /// A pool-allocated string.
+#[repr(transparent)]
 pub struct StringRef<'pool, const N: usize> {
     pub(crate) slot: *mut Slot<N>,
     pub(crate) _phantom: core::marker::PhantomData<&'pool ()>,
