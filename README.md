@@ -5,7 +5,7 @@ Usage example:
 ```rust
 use string_bath::{StringPool, StringPoolError, StringRef};
 
-// 2 slots, each may store at most 5 bytes (in fact 4, see below "Compatibility with C" section)
+// 2 slots, each may store at most 5 bytes
 let pool = StringPool::<2, 5>::new();
 
 let foo: StringRef<5> = pool.alloc("foo").unwrap();
@@ -33,12 +33,12 @@ use string_bath::{StringPool, StringPoolError, StringRef};
 // 1 slot, max string length = 5
 let pool = StringPool::<1, 5>::new();
 assert_eq!(
-    pool.alloc("12345").unwrap_err(),
-    StringPoolError::StringIsTooLong { max_length: 4, actual_length: 5 }
+    pool.alloc("123456").unwrap_err(),
+    StringPoolError::StringIsTooLong { max_length: 5, actual_length: 6 }
 );
 
-let s: StringRef<5> = pool.alloc("1234").unwrap();
+let s: StringRef<5> = pool.alloc("12345").unwrap();
 let ptr = unsafe { core::mem::transmute::<StringRef<5>, *const i8>(s) };
 let c_str = unsafe { core::ffi::CStr::from_ptr(ptr) };
-assert_eq!(c_str.to_str().unwrap(), "1234");
+assert_eq!(c_str.to_str().unwrap(), "12345");
 ```

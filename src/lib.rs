@@ -104,15 +104,15 @@ mod tests {
     fn test_slot_overflow() {
         let pool = StringPool::<1, 5>::new();
 
-        assert!(pool.alloc("12345").is_err());
-        let _s = pool.alloc("1234").unwrap();
+        assert!(pool.alloc("123456").is_err());
+        let _s = pool.alloc("12345").unwrap();
 
         assert!(!is_free(&pool, 0));
         {
             // SAFETY: `s` holds a pointer to a slot, not a reference,
             //         so it safe to temporarily create one here.
             let slot = unsafe { &*UnsafeCell::raw_get(&pool.slots[0]) };
-            assert_eq!(slot.str, [b'1', b'2', b'3', b'4', 0]);
+            assert_eq!(slot.str, [b'1', b'2', b'3', b'4', b'5']);
         }
     }
 
