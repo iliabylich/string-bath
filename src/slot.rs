@@ -8,7 +8,7 @@ pub(crate) struct Slot<const LEN: usize> {
     pub(crate) str: [u8; LEN],
     pub(crate) force_zero: u8,
     pub(crate) len: usize,
-    pub(crate) refcount: Cell<u8>,
+    pub(crate) refcount: Cell<usize>,
     pub(crate) free: bool,
 }
 

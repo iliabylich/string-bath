@@ -14,11 +14,6 @@ impl<'pool, const N: usize> StringRef<'pool, N> {
         unsafe { &*self.slot }
     }
 
-    const fn slot_mut(&mut self) -> &'pool mut Slot<N> {
-        // SAFETY: `self.slot` lives for `'pool` so it's safe to dereference it.
-        unsafe { &mut *self.slot }
-    }
-
     /// Converts `self` to a byte slice.
     #[must_use]
     #[inline]
@@ -98,11 +93,13 @@ impl<const N: usize> AsRef<str> for StringRef<'_, N> {
 impl<const N: usize> Drop for StringRef<'_, N> {
     #[inline]
     fn drop(&mut self) {
-        let slot = self.slot_mut();
+        let slot = self.slot();
 
         slot.dec_refcount();
         if slot.refcount.get() == 0 {
-            slot.release();
+            // SAFETY: if refcount is zero, no other `StringRef` points to this slot.
+            let unique_slot = unsafe { &mut *self.slot };
+            unique_slot.release();
         }
     }
 }

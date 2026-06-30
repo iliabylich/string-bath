@@ -4,9 +4,9 @@
 pub enum StringPoolError {
     /// Given string is too long for a string pool.
     StringIsTooLong {
-        /// Length of a given string.
-        max_length: usize,
         /// Maximum length that a pool accepts.
+        max_length: usize,
+        /// Length of a given string.
         actual_length: usize,
     },
 

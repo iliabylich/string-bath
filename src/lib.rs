@@ -138,4 +138,17 @@ mod tests {
             }
         );
     }
+
+    #[test]
+    fn test_drop_clone_while_str_borrow_is_alive() {
+        let pool = StringPool::<1, 10>::new();
+
+        let s1 = pool.alloc("foo").unwrap();
+        let s2 = s1.clone();
+
+        let borrowed = s2.as_str();
+        drop(s1);
+
+        assert_eq!(borrowed, "foo");
+    }
 }
