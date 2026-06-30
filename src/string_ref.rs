@@ -1,3 +1,5 @@
+use core::panic::RefUnwindSafe;
+
 use crate::slot::Slot;
 
 /// A pool-allocated string.
@@ -104,3 +106,5 @@ impl<const N: usize> Drop for StringRef<'_, N> {
         }
     }
 }
+
+impl<const N: usize> RefUnwindSafe for StringRef<'_, N> {}
