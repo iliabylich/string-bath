@@ -92,13 +92,16 @@ impl<const LEN: usize> Slot<LEN> {
     }
 
     #[expect(clippy::panic)]
-    #[must_use]
-    pub(crate) fn dec_refcount(&self) -> usize {
+    pub(crate) fn dec_refcount(&self) {
         self.refcount.update(|count| {
             count
                 .checked_sub(1)
                 .unwrap_or_else(|| panic!("Slot refcount underflow"))
         });
+    }
+
+    #[must_use]
+    pub(crate) const fn refcount(&self) -> usize {
         self.refcount.get()
     }
 

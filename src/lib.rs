@@ -41,7 +41,7 @@ mod tests {
     use super::{StringPool, StringPoolError};
 
     #[test]
-    fn test_string_pool() {
+    fn test_cleanup() {
         let pool = StringPool::<5, 10>::new();
 
         let s1 = pool.alloc("foo").unwrap();
@@ -93,10 +93,13 @@ mod tests {
     }
 
     #[test]
-    fn test_slot_overflow() {
+    fn test_slot_upper_bound() {
         let pool = StringPool::<1, 5>::new();
 
-        assert!(pool.alloc("123456").is_err());
+        assert_eq!(
+            pool.alloc("123456").unwrap_err(),
+            StringPoolError::StringIsTooLong
+        );
 
         let _s = pool.alloc("12345").unwrap();
         assert!(!pool.slots[0].is_free());
@@ -116,16 +119,31 @@ mod tests {
     }
 
     #[test]
-    fn test_drop_clone_while_str_borrow_is_alive() {
+    fn test_multiple_copies() {
         let pool = StringPool::<1, 10>::new();
 
         let s1 = pool.alloc("foo").unwrap();
         let s2 = s1.clone();
+        let s3 = s2.clone();
 
-        let borrowed = s2.as_str();
-        drop(s1);
+        assert!(!pool.slots[0].is_free());
+        assert_eq!(pool.slots[0].refcount(), 3);
 
+        let borrowed = s1.as_str();
+
+        drop(s3);
         assert_eq!(borrowed, "foo");
+        assert!(!pool.slots[0].is_free());
+        assert_eq!(pool.slots[0].refcount(), 2);
+
+        drop(s2);
+        assert_eq!(borrowed, "foo");
+        assert!(!pool.slots[0].is_free());
+        assert_eq!(pool.slots[0].refcount(), 1);
+
+        drop(s1);
+        assert!(pool.slots[0].is_free());
+        assert_eq!(pool.slots[0].refcount(), 0);
     }
 
     #[test]

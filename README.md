@@ -46,3 +46,26 @@ let ptr = s.as_ptr();
 let c_str = unsafe { core::ffi::CStr::from_ptr(ptr) };
 assert_eq!(c_str.to_str().unwrap(), "12345");
 ```
+
+Please note that a pointer doesn't have any lifetime attached, so `&str` objects taken from a `StringRef` are scoped to their source objects, but `*const c_char` are not:
+
+```rust,compile_fail
+use string_bath::{StringPool};
+
+let pool = StringPool::<1, 5>::new();
+let s = pool.alloc("12345").unwrap();
+let as_str = s.as_str();
+drop(s);
+let _ = as_str; // error: `s` has been dropped
+```
+
+
+```rust
+use string_bath::{StringPool};
+
+let pool = StringPool::<1, 5>::new();
+let s = pool.alloc("12345").unwrap();
+let as_ptr = s.as_ptr();
+drop(s);
+let _ = as_ptr; // compiles
+```
