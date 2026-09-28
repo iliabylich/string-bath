@@ -5,18 +5,26 @@ use core::{cell::Cell, ffi::c_char};
 #[derive(Debug)]
 #[repr(C)]
 pub(crate) struct Slot<const LEN: usize> {
-    pub(crate) str: Cell<[u8; LEN]>,
-    pub(crate) force_zero: u8,
+    pub(crate) buf: Buf<LEN>,
     pub(crate) len: Cell<usize>,
     pub(crate) refcount: Cell<usize>,
+}
+
+#[derive(Debug)]
+#[repr(C)]
+pub(crate) struct Buf<const N: usize> {
+    pub(crate) bytes: Cell<[u8; N]>,
+    nul: u8,
 }
 
 impl<const LEN: usize> Slot<LEN> {
     /// Constructs an empty slot.
     pub(crate) const fn new_empty() -> Self {
         Self {
-            str: Cell::new([0; LEN]),
-            force_zero: 0,
+            buf: Buf {
+                bytes: Cell::new([0; LEN]),
+                nul: 0,
+            },
             len: Cell::new(0),
             refcount: Cell::new(0),
         }
@@ -39,7 +47,7 @@ impl<const LEN: usize> Slot<LEN> {
             .ok_or(StringPoolError::StringIsTooLong)?
             .copy_from_slice(src);
 
-        self.str.set(dst);
+        self.buf.bytes.set(dst);
         self.len.set(len);
         self.refcount.set(1);
 
@@ -47,7 +55,7 @@ impl<const LEN: usize> Slot<LEN> {
     }
 
     pub(crate) fn release(&self) {
-        self.str.set([0; _]);
+        self.buf.bytes.set([0; _]);
         self.len.set(0);
         self.refcount.set(0);
     }
@@ -57,7 +65,7 @@ impl<const LEN: usize> Slot<LEN> {
         //         Nobody mutates `self.str` or `self.len`, even the `Slot` itself.
         //         The only exception is `Slot::release()` but it is only called by `Drop` on a `StringRef`
         //         if the reference is the last one (which is tracked using `refcount` field).
-        let str = unsafe { &*self.str.as_ptr() };
+        let str = unsafe { &*self.buf.bytes.as_ptr() };
 
         // SAFETY: empty slot has `len=0` so it's always safe to `.get()` it.
         //         occupied slot can only be constructed by `.acquire()` method which guarantees validity of the data.
@@ -70,8 +78,8 @@ impl<const LEN: usize> Slot<LEN> {
         unsafe { core::str::from_utf8_unchecked(self.as_bytes()) }
     }
 
-    pub(crate) fn as_ptr(&self) -> *const c_char {
-        self.as_bytes().as_ptr().cast()
+    pub(crate) const fn as_ptr(&self) -> *const c_char {
+        (&raw const self.buf).cast()
     }
 
     #[expect(clippy::panic)]

@@ -101,7 +101,7 @@ mod tests {
         let _s = pool.alloc("12345").unwrap();
         assert!(!pool.slots[0].is_free());
         let slot = &pool.slots[0];
-        assert_eq!(slot.str.get(), [b'1', b'2', b'3', b'4', b'5']);
+        assert_eq!(slot.buf.bytes.get(), [b'1', b'2', b'3', b'4', b'5']);
     }
 
     #[test]

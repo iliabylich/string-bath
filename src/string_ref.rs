@@ -28,7 +28,7 @@ impl<const N: usize> StringRef<'_, N> {
     /// Dropping the last `StringRef` invalidates the pointer.
     #[must_use]
     #[inline]
-    pub fn as_ptr(&self) -> *const c_char {
+    pub const fn as_ptr(&self) -> *const c_char {
         self.slot.as_ptr()
     }
 }
