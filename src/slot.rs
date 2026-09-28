@@ -34,16 +34,13 @@ impl<const LEN: usize> Slot<LEN> {
     ///
     /// # Errors
     ///
-    /// Returns an error if the given string doesn't fit into a slot.
+    /// Returns an error if:
+    /// 1. given string doesn't fit into a slot
+    /// 2. given string contains a NUL byte
+    /// 3. the pool is full
     pub(crate) fn acquire(&self, str: &str) -> Result<(), StringPoolError> {
         let src = str.as_bytes();
-        if src.contains(&0) {
-            return Err(StringPoolError::StringContainsNulByte);
-        }
         let len = src.len();
-        if len > LEN {
-            return Err(StringPoolError::StringIsTooLong);
-        }
 
         let mut dst = [0; LEN];
         dst.get_mut(0..len)

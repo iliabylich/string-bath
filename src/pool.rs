@@ -32,6 +32,13 @@ impl<const SLOTS_COUNT: usize, const STRING_LEN: usize> StringPool<SLOTS_COUNT, 
     /// Returns an error if the pool is full.
     #[inline]
     pub fn alloc(&self, str: &str) -> Result<StringRef<'_, STRING_LEN>, StringPoolError> {
+        if str.as_bytes().contains(&0) {
+            return Err(StringPoolError::StringContainsNulByte);
+        }
+        if str.len() > STRING_LEN {
+            return Err(StringPoolError::StringIsTooLong);
+        }
+
         let slot = self
             .slots
             .iter()
