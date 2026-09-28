@@ -29,7 +29,11 @@ impl<const SLOTS_COUNT: usize, const STRING_LEN: usize> StringPool<SLOTS_COUNT, 
     ///
     /// # Errors
     ///
-    /// Returns an error if the pool is full.
+    /// Returns an error if:
+    ///
+    ///   + given string doesn't fit into a slot
+    ///   + given string contains a NUL byte
+    ///   + the pool is full
     #[inline]
     pub fn alloc(&self, str: &str) -> Result<StringRef<'_, STRING_LEN>, StringPoolError> {
         if str.as_bytes().contains(&0) {
@@ -45,7 +49,11 @@ impl<const SLOTS_COUNT: usize, const STRING_LEN: usize> StringPool<SLOTS_COUNT, 
             .find(|slot| slot.is_free())
             .ok_or(StringPoolError::NoSpaceInPool)?;
 
-        slot.acquire(str)?;
+        // SAFETY: `acquire()` requires a string to fit into a slot and to have no NUL byte
+        //         which is checked at the very beginning of this function.
+        unsafe {
+            slot.acquire(str);
+        };
         Ok(StringRef { slot })
     }
 }

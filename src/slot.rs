@@ -1,18 +1,17 @@
-use crate::StringPoolError;
 use core::{cell::Cell, ffi::c_char};
 
 /// Representation of a slot in a string pool.
 #[derive(Debug)]
 #[repr(C)]
 pub(crate) struct Slot<const LEN: usize> {
-    buf: Buf<LEN>,
+    buf: BufWithGuaranteedNul<LEN>,
     len: Cell<usize>,
     refcount: Cell<usize>,
 }
 
 #[derive(Debug)]
 #[repr(C)]
-struct Buf<const N: usize> {
+struct BufWithGuaranteedNul<const N: usize> {
     pub(crate) bytes: Cell<[u8; N]>,
     nul: u8,
 }
@@ -20,7 +19,7 @@ struct Buf<const N: usize> {
 impl<const LEN: usize> Slot<LEN> {
     pub(crate) const fn new_empty() -> Self {
         Self {
-            buf: Buf {
+            buf: BufWithGuaranteedNul {
                 bytes: Cell::new([0; LEN]),
                 nul: 0,
             },
@@ -29,32 +28,35 @@ impl<const LEN: usize> Slot<LEN> {
         }
     }
 
-    /// Acquires a slot and fills it with a given string.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// 1. given string doesn't fit into a slot
-    /// 2. given string contains a NUL byte
-    /// 3. the pool is full
-    pub(crate) fn acquire(&self, str: &str) -> Result<(), StringPoolError> {
+    // SAFETY: it's safe to call this function if:
+    //         1. `str` fits into a slot
+    //         2. `str` doesn't have a NUL byte
+    pub(crate) unsafe fn acquire(&self, str: &str) {
         let src = str.as_bytes();
         let len = src.len();
 
-        let mut dst = [0; LEN];
-        dst.get_mut(0..len)
-            .ok_or(StringPoolError::StringIsTooLong)?
-            .copy_from_slice(src);
+        let dst = self.buf.bytes.as_ptr().cast::<u8>();
+        // SAFETY: the string fits into a slot, and we are the only holder of this `Slot`,
+        //         so copying `len` bytes into the slot is safe.
+        unsafe {
+            core::ptr::copy(src.as_ptr(), dst, len);
+        };
+        if len < LEN {
+            // SAFETY: `len` is less than `LEN`, so the address at `dst+len` is within the buffer range
+            let null_dst = unsafe { dst.add(len) };
 
-        self.buf.bytes.set(dst);
+            // SAFETY: `len` is less than `LEN`, so the address at `dst+len` is within the buffer range
+            //         and writable
+            unsafe {
+                null_dst.write(0);
+            };
+        }
+
         self.len.set(len);
         self.refcount.set(1);
-
-        Ok(())
     }
 
     pub(crate) fn release(&self) {
-        self.buf.bytes.set([0; _]);
         self.len.set(0);
         self.refcount.set(0);
     }
@@ -62,8 +64,7 @@ impl<const LEN: usize> Slot<LEN> {
     pub(crate) fn as_bytes(&self) -> &[u8] {
         // SAFETY: once the `Slot` is acquired the data inside it is frozen.
         //         Nobody mutates `self.str` or `self.len`, even the `Slot` itself.
-        //         The only exception is `Slot::release()` but it is only called by `Drop` on a `StringRef`
-        //         if the reference is the last one (which is tracked using `refcount` field).
+        //         The only exception is `Slot::release()` but it is only called by `Drop` on the last `StringRef`.
         let str = unsafe { &*self.buf.bytes.as_ptr() };
 
         // SAFETY: empty slot has `len=0` so it's always safe to `.get()` it.
