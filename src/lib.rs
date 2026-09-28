@@ -121,22 +121,10 @@ mod tests {
         let pool = StringPool::<1, 0>::new();
 
         let err = pool.alloc("f").unwrap_err();
-        assert_eq!(
-            err,
-            StringPoolError::StringIsTooLong {
-                max_length: 0,
-                actual_length: 1
-            }
-        );
+        assert_eq!(err, StringPoolError::StringIsTooLong);
 
         let err = pool.alloc("").unwrap_err();
-        assert_eq!(
-            err,
-            StringPoolError::StringIsTooLong {
-                max_length: 0,
-                actual_length: 0
-            }
-        );
+        assert_eq!(err, StringPoolError::StringIsTooLong);
     }
 
     #[test]

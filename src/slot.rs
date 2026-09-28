@@ -31,10 +31,7 @@ impl<const LEN: usize> Slot<LEN> {
     /// Returns an error if the given string doesn't fit into a slot.
     pub(crate) fn acquire(&mut self, str: &str) -> Result<(), StringPoolError> {
         if LEN == 0 || str.len() > LEN {
-            return Err(StringPoolError::StringIsTooLong {
-                max_length: LEN,
-                actual_length: str.len(),
-            });
+            return Err(StringPoolError::StringIsTooLong);
         }
 
         let from = str.as_bytes();

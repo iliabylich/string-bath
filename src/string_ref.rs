@@ -66,7 +66,10 @@ impl<const N: usize> PartialEq<StringRef<'_, N>> for &str {
 
 impl<const N: usize> core::hash::Hash for StringRef<'_, N> {
     #[inline]
-    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: core::hash::Hasher,
+    {
         self.as_str().hash(state);
     }
 }

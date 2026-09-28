@@ -34,7 +34,7 @@ use string_bath::{StringPool, StringPoolError, StringRef};
 let pool = StringPool::<1, 5>::new();
 assert_eq!(
     pool.alloc("123456").unwrap_err(),
-    StringPoolError::StringIsTooLong { max_length: 5, actual_length: 6 }
+    StringPoolError::StringIsTooLong
 );
 
 let s: StringRef<5> = pool.alloc("12345").unwrap();
