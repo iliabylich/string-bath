@@ -97,8 +97,7 @@ impl<const N: usize> AsRef<str> for StringRef<'_, N> {
 impl<const N: usize> Drop for StringRef<'_, N> {
     #[inline]
     fn drop(&mut self) {
-        self.slot.dec_refcount();
-        if self.slot.refcount.get() == 0 {
+        if self.slot.dec_refcount() == 0 {
             self.slot.release();
         }
     }

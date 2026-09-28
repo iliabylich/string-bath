@@ -5,20 +5,19 @@ use core::{cell::Cell, ffi::c_char};
 #[derive(Debug)]
 #[repr(C)]
 pub(crate) struct Slot<const LEN: usize> {
-    pub(crate) buf: Buf<LEN>,
-    pub(crate) len: Cell<usize>,
-    pub(crate) refcount: Cell<usize>,
+    buf: Buf<LEN>,
+    len: Cell<usize>,
+    refcount: Cell<usize>,
 }
 
 #[derive(Debug)]
 #[repr(C)]
-pub(crate) struct Buf<const N: usize> {
+struct Buf<const N: usize> {
     pub(crate) bytes: Cell<[u8; N]>,
     nul: u8,
 }
 
 impl<const LEN: usize> Slot<LEN> {
-    /// Constructs an empty slot.
     pub(crate) const fn new_empty() -> Self {
         Self {
             buf: Buf {
@@ -92,15 +91,22 @@ impl<const LEN: usize> Slot<LEN> {
     }
 
     #[expect(clippy::panic)]
-    pub(crate) fn dec_refcount(&self) {
+    #[must_use]
+    pub(crate) fn dec_refcount(&self) -> usize {
         self.refcount.update(|count| {
             count
                 .checked_sub(1)
                 .unwrap_or_else(|| panic!("Slot refcount underflow"))
         });
+        self.refcount.get()
     }
 
     pub(crate) const fn is_free(&self) -> bool {
         self.refcount.get() == 0
+    }
+
+    #[cfg(test)]
+    pub(crate) fn raw_bytes(&self) -> [u8; LEN] {
+        self.buf.bytes.get()
     }
 }
