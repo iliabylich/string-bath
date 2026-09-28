@@ -7,6 +7,9 @@ pub enum StringPoolError {
 
     /// No space in the pool.
     NoSpaceInPool,
+
+    /// Given string contains a NUL byte.
+    StringContainsNulByte,
 }
 
 impl core::fmt::Display for StringPoolError {
@@ -15,6 +18,7 @@ impl core::fmt::Display for StringPoolError {
         match *self {
             Self::StringIsTooLong => f.write_str("StringIsTooLong"),
             Self::NoSpaceInPool => f.write_str("NoSpaceInPool"),
+            Self::StringContainsNulByte => f.write_str("StringContainsNulByte"),
         }
     }
 }

@@ -37,10 +37,13 @@ impl<const LEN: usize> Slot<LEN> {
     /// Returns an error if the given string doesn't fit into a slot.
     pub(crate) fn acquire(&self, str: &str) -> Result<(), StringPoolError> {
         let src = str.as_bytes();
-        if src.len() > LEN {
+        if src.contains(&0) {
+            return Err(StringPoolError::StringContainsNulByte);
+        }
+        let len = src.len();
+        if len > LEN {
             return Err(StringPoolError::StringIsTooLong);
         }
-        let len = core::cmp::min(src.len(), LEN);
 
         let mut dst = [0; LEN];
         dst.get_mut(0..len)

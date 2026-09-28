@@ -127,4 +127,14 @@ mod tests {
 
         assert_eq!(borrowed, "foo");
     }
+
+    #[test]
+    fn test_nul_byte() {
+        let pool = StringPool::<1, 5>::new();
+
+        assert_eq!(
+            pool.alloc("ab\0cd").unwrap_err(),
+            StringPoolError::StringContainsNulByte
+        );
+    }
 }
