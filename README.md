@@ -40,7 +40,7 @@ use string_bath::{StringPool, StringPoolError, StringRef};
 let pool = StringPool::<1, 5>::new();
 
 let s: StringRef<5> = pool.alloc("12345").unwrap();
-let ptr = unsafe { core::mem::transmute::<StringRef<5>, *const i8>(s) };
+let ptr = s.as_ptr();
 let c_str = unsafe { core::ffi::CStr::from_ptr(ptr) };
 assert_eq!(c_str.to_str().unwrap(), "12345");
 ```

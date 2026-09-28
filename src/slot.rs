@@ -1,5 +1,5 @@
 use crate::StringPoolError;
-use core::cell::Cell;
+use core::{cell::Cell, ffi::c_char};
 
 /// Representation of a slot in a string pool.
 #[derive(Debug)]
@@ -46,14 +46,12 @@ impl<const LEN: usize> Slot<LEN> {
         Ok(())
     }
 
-    /// Resets a slot so that a pool that owns it may re-use it.
     pub(crate) fn release(&self) {
         self.str.set([0; _]);
         self.len.set(0);
         self.refcount.set(0);
     }
 
-    /// Returns a byte representation of a slot.
     pub(crate) fn as_bytes(&self) -> &[u8] {
         // SAFETY: once the `Slot` is acquired the data inside it is frozen.
         //         Nobody mutates `self.str` or `self.len`, even the `Slot` itself.
@@ -66,11 +64,14 @@ impl<const LEN: usize> Slot<LEN> {
         unsafe { str.get_unchecked(..self.len.get()) }
     }
 
-    /// Returns a string representation of a slot.
     pub(crate) fn as_str(&self) -> &str {
         // SAFETY: `self.as_bytes()` is either an empty slice or a valid UTF-8 string because it was
         //         constructed based on a valid `&str`.
         unsafe { core::str::from_utf8_unchecked(self.as_bytes()) }
+    }
+
+    pub(crate) fn as_ptr(&self) -> *const c_char {
+        self.as_bytes().as_ptr().cast()
     }
 
     pub(crate) fn inc_refcount(&self) {
