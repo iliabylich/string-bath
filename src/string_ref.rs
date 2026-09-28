@@ -1,5 +1,5 @@
 use crate::slot::Slot;
-use core::{ffi::c_char, panic::RefUnwindSafe};
+use core::{ffi::CStr, panic::RefUnwindSafe};
 
 /// A pool-allocated string.
 #[repr(transparent)]
@@ -22,14 +22,11 @@ impl<const N: usize> StringRef<'_, N> {
         self.slot.as_str()
     }
 
-    /// Converts `self` to a C-style NULL terminated char pointer.
-    ///
-    /// The pointer has the lifetime of a string living in the pool.
-    /// Dropping the last `StringRef` invalidates the pointer.
+    /// Converts `self` to a `CStr`.
     #[must_use]
     #[inline]
-    pub const fn as_ptr(&self) -> *const c_char {
-        self.slot.as_ptr()
+    pub const fn as_c_str(&self) -> &CStr {
+        self.slot.as_c_str()
     }
 }
 

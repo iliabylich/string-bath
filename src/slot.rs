@@ -1,4 +1,4 @@
-use core::{cell::Cell, ffi::c_char};
+use core::{cell::Cell, ffi::CStr};
 
 /// Representation of a slot in a string pool.
 #[derive(Debug)]
@@ -78,8 +78,12 @@ impl<const LEN: usize> Slot<LEN> {
         unsafe { core::str::from_utf8_unchecked(self.as_bytes()) }
     }
 
-    pub(crate) const fn as_ptr(&self) -> *const c_char {
-        (&raw const self.buf).cast()
+    pub(crate) const fn as_c_str(&self) -> &CStr {
+        let ptr = (&raw const self.buf).cast();
+        // SAFETY: `buf` is always filled with a valid initialized sequence of bytes with a trailing NUL
+        //         because the only way to initialize a `Slot` is to call `acquire()` that guarantees
+        //         correctness of the data.
+        unsafe { CStr::from_ptr(ptr) }
     }
 
     #[expect(clippy::panic)]
