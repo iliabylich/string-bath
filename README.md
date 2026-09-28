@@ -1,5 +1,7 @@
 # Fixed-size single-threaded `no_std` zero-dependency string pool implementation
 
+Calling `.alloc()` or dropping `StringRef` from different threads triggers a race condition. This crate targets apps that can guarantee that only one thread touches the pool.
+
 Usage example:
 
 ```rust

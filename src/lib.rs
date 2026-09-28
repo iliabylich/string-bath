@@ -137,4 +137,20 @@ mod tests {
             StringPoolError::StringContainsNulByte
         );
     }
+
+    #[test]
+    fn test_global_pool() {
+        static POOL: StringPool<2, 5> = StringPool::new();
+
+        let s1 = POOL.alloc("foo").unwrap();
+        assert_eq!(s1.as_str(), "foo");
+
+        let s2 = POOL.alloc("bar").unwrap();
+        assert_eq!(s2.as_str(), "bar");
+
+        assert_eq!(
+            POOL.alloc("baz").unwrap_err(),
+            StringPoolError::NoSpaceInPool
+        );
+    }
 }
