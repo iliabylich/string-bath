@@ -40,27 +40,23 @@ pub use string_ref::StringRef;
 mod tests {
     use super::{StringPool, StringPoolError};
 
-    fn is_free<const N: usize, const M: usize>(pool: &StringPool<N, M>, idx: usize) -> bool {
-        pool.slots[idx].free.get()
-    }
-
     #[test]
     fn test_string_pool() {
         let pool = StringPool::<5, 10>::new();
 
         let s1 = pool.alloc("foo").unwrap();
         assert_eq!(s1, "foo");
-        assert!(!is_free(&pool, 0));
+        assert!(!pool.slots[0].is_free());
 
         let s2 = pool.alloc("bar").unwrap();
         assert_eq!(s2, "bar");
-        assert!(!is_free(&pool, 1));
+        assert!(!pool.slots[1].is_free());
 
         drop(s2);
-        assert!(is_free(&pool, 1));
+        assert!(pool.slots[1].is_free());
 
         drop(s1);
-        assert!(is_free(&pool, 0));
+        assert!(pool.slots[0].is_free());
     }
 
     #[test]
@@ -76,7 +72,7 @@ mod tests {
 
             for idx in 0..5 {
                 assert!(
-                    !is_free(&pool, idx),
+                    !pool.slots[idx].is_free(),
                     "expected slot at {idx} to be occupied"
                 );
             }
@@ -103,7 +99,7 @@ mod tests {
         assert!(pool.alloc("123456").is_err());
 
         let _s = pool.alloc("12345").unwrap();
-        assert!(!is_free(&pool, 0));
+        assert!(!pool.slots[0].is_free());
         let slot = &pool.slots[0];
         assert_eq!(slot.str.get(), [b'1', b'2', b'3', b'4', b'5']);
     }

@@ -35,7 +35,7 @@ impl<const SLOTS_COUNT: usize, const STRING_LEN: usize> StringPool<SLOTS_COUNT, 
         let slot = self
             .slots
             .iter()
-            .find(|slot| slot.free.get())
+            .find(|slot| slot.is_free())
             .ok_or(StringPoolError::NoSpaceInPool)?;
 
         slot.acquire(str)?;

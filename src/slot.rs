@@ -9,7 +9,6 @@ pub(crate) struct Slot<const LEN: usize> {
     pub(crate) force_zero: u8,
     pub(crate) len: Cell<usize>,
     pub(crate) refcount: Cell<usize>,
-    pub(crate) free: Cell<bool>,
 }
 
 impl<const LEN: usize> Slot<LEN> {
@@ -20,7 +19,6 @@ impl<const LEN: usize> Slot<LEN> {
             force_zero: 0,
             len: Cell::new(0),
             refcount: Cell::new(0),
-            free: Cell::new(true),
         }
     }
 
@@ -44,7 +42,6 @@ impl<const LEN: usize> Slot<LEN> {
         self.str.set(dst);
         self.len.set(len);
         self.refcount.set(1);
-        self.free.set(false);
 
         Ok(())
     }
@@ -54,7 +51,6 @@ impl<const LEN: usize> Slot<LEN> {
         self.str.set([0; _]);
         self.len.set(0);
         self.refcount.set(0);
-        self.free.set(true);
     }
 
     /// Returns a byte representation of a slot.
@@ -83,5 +79,9 @@ impl<const LEN: usize> Slot<LEN> {
 
     pub(crate) fn dec_refcount(&self) {
         self.refcount.update(|count| count.wrapping_sub(1));
+    }
+
+    pub(crate) const fn is_free(&self) -> bool {
+        self.refcount.get() == 0
     }
 }
