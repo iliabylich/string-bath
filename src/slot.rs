@@ -74,12 +74,22 @@ impl<const LEN: usize> Slot<LEN> {
         self.as_bytes().as_ptr().cast()
     }
 
+    #[expect(clippy::panic)]
     pub(crate) fn inc_refcount(&self) {
-        self.refcount.update(|count| count.wrapping_add(1));
+        self.refcount.update(|count| {
+            count
+                .checked_add(1)
+                .unwrap_or_else(|| panic!("Slot refcount overflow"))
+        });
     }
 
+    #[expect(clippy::panic)]
     pub(crate) fn dec_refcount(&self) {
-        self.refcount.update(|count| count.wrapping_sub(1));
+        self.refcount.update(|count| {
+            count
+                .checked_sub(1)
+                .unwrap_or_else(|| panic!("Slot refcount underflow"))
+        });
     }
 
     pub(crate) const fn is_free(&self) -> bool {
