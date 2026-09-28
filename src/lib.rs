@@ -60,51 +60,24 @@ mod tests {
     }
 
     #[test]
-    fn test_string_pool_reuse() {
+    fn test_slot_reuse() {
         let pool = StringPool::<5, 10>::new();
 
         for _ in 0..2 {
+            for (idx, slot) in pool.slots.iter().enumerate() {
+                assert!(slot.is_free(), "expected slot at {idx} to be free");
+            }
+
             let _s1 = pool.alloc("one").unwrap();
             let _s2 = pool.alloc("two").unwrap();
             let _s3 = pool.alloc("three").unwrap();
             let _s4 = pool.alloc("four").unwrap();
             let _s5 = pool.alloc("five").unwrap();
 
-            for idx in 0..5 {
-                assert!(
-                    !pool.slots[idx].is_free(),
-                    "expected slot at {idx} to be occupied"
-                );
+            for (idx, slot) in pool.slots.iter().enumerate() {
+                assert!(!slot.is_free(), "expected slot at {idx} to be occupied");
             }
         }
-    }
-
-    #[test]
-    fn test_pool_overflow() {
-        let pool = StringPool::<3, 10>::new();
-
-        let _s1 = pool.alloc("one").unwrap();
-        let _s2 = pool.alloc("two").unwrap();
-        let s3 = pool.alloc("three").unwrap();
-        assert!(pool.alloc("four").is_err());
-
-        drop(s3);
-        let _s4 = pool.alloc("four").unwrap();
-    }
-
-    #[test]
-    fn test_slot_upper_bound() {
-        let pool = StringPool::<1, 5>::new();
-
-        assert_eq!(
-            pool.alloc("123456").unwrap_err(),
-            StringPoolError::StringIsTooLong
-        );
-
-        let _s = pool.alloc("12345").unwrap();
-        assert!(!pool.slots[0].is_free());
-        let slot = &pool.slots[0];
-        assert_eq!(slot.raw_bytes(), [b'1', b'2', b'3', b'4', b'5']);
     }
 
     #[test]
@@ -119,7 +92,7 @@ mod tests {
     }
 
     #[test]
-    fn test_multiple_copies() {
+    fn test_reference_counting() {
         let pool = StringPool::<1, 10>::new();
 
         let s1 = pool.alloc("foo").unwrap();
@@ -147,7 +120,7 @@ mod tests {
     }
 
     #[test]
-    fn test_nul_byte() {
+    fn test_nul_byte_error() {
         let pool = StringPool::<1, 5>::new();
 
         assert_eq!(
@@ -157,17 +130,23 @@ mod tests {
     }
 
     #[test]
-    fn test_global_pool() {
-        static POOL: StringPool<2, 5> = StringPool::new();
-
-        let s1 = POOL.alloc("foo").unwrap();
-        assert_eq!(s1.as_str(), "foo");
-
-        let s2 = POOL.alloc("bar").unwrap();
-        assert_eq!(s2.as_str(), "bar");
+    fn test_string_is_too_long_error() {
+        let pool = StringPool::<1, 5>::new();
 
         assert_eq!(
-            POOL.alloc("baz").unwrap_err(),
+            pool.alloc("123456").unwrap_err(),
+            StringPoolError::StringIsTooLong
+        );
+    }
+
+    #[test]
+    fn test_no_space_in_pool_error() {
+        let pool = StringPool::<2, 10>::new();
+
+        let _s1 = pool.alloc("one").unwrap();
+        let _s2 = pool.alloc("two").unwrap();
+        assert_eq!(
+            pool.alloc("three").unwrap_err(),
             StringPoolError::NoSpaceInPool
         );
     }

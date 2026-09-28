@@ -57,9 +57,3 @@ impl<const SLOTS_COUNT: usize, const STRING_LEN: usize> StringPool<SLOTS_COUNT, 
         Ok(StringRef { slot })
     }
 }
-
-/// SAFETY: the library works only under the assumption that there's always one main thread.
-unsafe impl<const SLOTS_COUNT: usize, const STRING_LEN: usize> Sync
-    for StringPool<SLOTS_COUNT, STRING_LEN>
-{
-}

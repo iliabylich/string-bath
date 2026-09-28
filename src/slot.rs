@@ -67,8 +67,8 @@ impl<const LEN: usize> Slot<LEN> {
         //         The only exception is `Slot::release()` but it is only called by `Drop` on the last `StringRef`.
         let str = unsafe { &*self.buf.bytes.as_ptr() };
 
-        // SAFETY: empty slot has `len=0` so it's always safe to `.get()` it.
-        //         occupied slot can only be constructed by `.acquire()` method which guarantees validity of the data.
+        // SAFETY: empty slot has `len=0` so it's always safe to `get()` it.
+        //         occupied slot can only be constructed by `acquire()` method which guarantees validity of the data.
         unsafe { str.get_unchecked(..self.len.get()) }
     }
 
@@ -82,7 +82,7 @@ impl<const LEN: usize> Slot<LEN> {
         let ptr = (&raw const self.buf).cast();
         // SAFETY: `buf` is always filled with a valid initialized sequence of bytes with a trailing NUL
         //         because the only way to initialize a `Slot` is to call `acquire()` that guarantees
-        //         correctness of the data.
+        //         validity of the data.
         unsafe { CStr::from_ptr(ptr) }
     }
 
@@ -111,10 +111,5 @@ impl<const LEN: usize> Slot<LEN> {
 
     pub(crate) const fn is_free(&self) -> bool {
         self.refcount.get() == 0
-    }
-
-    #[cfg(test)]
-    pub(crate) fn raw_bytes(&self) -> [u8; LEN] {
-        self.buf.bytes.get()
     }
 }
