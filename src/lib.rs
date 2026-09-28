@@ -39,13 +39,9 @@ pub use string_ref::StringRef;
 #[cfg(test)]
 mod tests {
     use super::{StringPool, StringPoolError};
-    use core::cell::UnsafeCell;
 
     fn is_free<const N: usize, const M: usize>(pool: &StringPool<N, M>, idx: usize) -> bool {
-        // SAFETY: there are no other **references** at the moment pointing to the value in the slot
-        //         so it's safe to temporarily get one here.
-        let slot = unsafe { &*UnsafeCell::raw_get(&pool.slots[idx]) };
-        slot.free
+        pool.slots[idx].free.get()
     }
 
     #[test]
@@ -105,15 +101,11 @@ mod tests {
         let pool = StringPool::<1, 5>::new();
 
         assert!(pool.alloc("123456").is_err());
-        let _s = pool.alloc("12345").unwrap();
 
+        let _s = pool.alloc("12345").unwrap();
         assert!(!is_free(&pool, 0));
-        {
-            // SAFETY: `s` holds a pointer to a slot, not a reference,
-            //         so it safe to temporarily create one here.
-            let slot = unsafe { &*UnsafeCell::raw_get(&pool.slots[0]) };
-            assert_eq!(slot.str, [b'1', b'2', b'3', b'4', b'5']);
-        }
+        let slot = &pool.slots[0];
+        assert_eq!(slot.str.get(), [b'1', b'2', b'3', b'4', b'5']);
     }
 
     #[test]
@@ -123,8 +115,8 @@ mod tests {
         let err = pool.alloc("f").unwrap_err();
         assert_eq!(err, StringPoolError::StringIsTooLong);
 
-        let err = pool.alloc("").unwrap_err();
-        assert_eq!(err, StringPoolError::StringIsTooLong);
+        let ok = pool.alloc("").unwrap();
+        assert_eq!(ok.as_str(), "");
     }
 
     #[test]

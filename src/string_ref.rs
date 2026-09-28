@@ -1,32 +1,25 @@
-use core::panic::RefUnwindSafe;
-
 use crate::slot::Slot;
+use core::panic::RefUnwindSafe;
 
 /// A pool-allocated string.
 #[repr(transparent)]
 pub struct StringRef<'pool, const N: usize> {
-    pub(crate) slot: *mut Slot<N>,
-    pub(crate) _phantom: core::marker::PhantomData<&'pool ()>,
+    pub(crate) slot: &'pool Slot<N>,
 }
 
-impl<'pool, const N: usize> StringRef<'pool, N> {
-    const fn slot(&self) -> &'pool Slot<N> {
-        // SAFETY: `self.slot` lives for `'pool` so it's safe to dereference it.
-        unsafe { &*self.slot }
-    }
-
+impl<const N: usize> StringRef<'_, N> {
     /// Converts `self` to a byte slice.
     #[must_use]
     #[inline]
     pub fn as_bytes(&self) -> &[u8] {
-        self.slot().as_bytes()
+        self.slot.as_bytes()
     }
 
     /// Converts `self` to a string slice.
     #[must_use]
     #[inline]
     pub fn as_str(&self) -> &str {
-        self.slot().as_str()
+        self.slot.as_str()
     }
 }
 
@@ -79,11 +72,8 @@ impl<const N: usize> Eq for StringRef<'_, N> {}
 impl<const N: usize> Clone for StringRef<'_, N> {
     #[inline]
     fn clone(&self) -> Self {
-        self.slot().inc_refcount();
-        Self {
-            slot: self.slot,
-            _phantom: core::marker::PhantomData,
-        }
+        self.slot.inc_refcount();
+        Self { slot: self.slot }
     }
 }
 
@@ -97,13 +87,9 @@ impl<const N: usize> AsRef<str> for StringRef<'_, N> {
 impl<const N: usize> Drop for StringRef<'_, N> {
     #[inline]
     fn drop(&mut self) {
-        let slot = self.slot();
-
-        slot.dec_refcount();
-        if slot.refcount.get() == 0 {
-            // SAFETY: if refcount is zero, no other `StringRef` points to this slot.
-            let unique_slot = unsafe { &mut *self.slot };
-            unique_slot.release();
+        self.slot.dec_refcount();
+        if self.slot.refcount.get() == 0 {
+            self.slot.release();
         }
     }
 }

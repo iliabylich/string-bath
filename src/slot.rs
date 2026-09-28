@@ -5,22 +5,22 @@ use core::cell::Cell;
 #[derive(Debug)]
 #[repr(C)]
 pub(crate) struct Slot<const LEN: usize> {
-    pub(crate) str: [u8; LEN],
+    pub(crate) str: Cell<[u8; LEN]>,
     pub(crate) force_zero: u8,
-    pub(crate) len: usize,
+    pub(crate) len: Cell<usize>,
     pub(crate) refcount: Cell<usize>,
-    pub(crate) free: bool,
+    pub(crate) free: Cell<bool>,
 }
 
 impl<const LEN: usize> Slot<LEN> {
     /// Constructs an empty slot.
     pub(crate) const fn new_empty() -> Self {
         Self {
-            str: [0; LEN],
+            str: Cell::new([0; LEN]),
             force_zero: 0,
-            len: 0,
+            len: Cell::new(0),
             refcount: Cell::new(0),
-            free: true,
+            free: Cell::new(true),
         }
     }
 
@@ -29,60 +29,59 @@ impl<const LEN: usize> Slot<LEN> {
     /// # Errors
     ///
     /// Returns an error if the given string doesn't fit into a slot.
-    pub(crate) fn acquire(&mut self, str: &str) -> Result<(), StringPoolError> {
-        if LEN == 0 || str.len() > LEN {
+    pub(crate) fn acquire(&self, str: &str) -> Result<(), StringPoolError> {
+        let src = str.as_bytes();
+        if src.len() > LEN {
             return Err(StringPoolError::StringIsTooLong);
         }
+        let len = core::cmp::min(src.len(), LEN);
 
-        let from = str.as_bytes();
-        // SAFETY: we validated length of the `str` above, it fits into a slot.
-        let to = unsafe { self.str.get_unchecked_mut(0..from.len()) };
+        let mut dst = [0; LEN];
+        dst.get_mut(0..len)
+            .ok_or(StringPoolError::StringIsTooLong)?
+            .copy_from_slice(src);
 
-        to.copy_from_slice(from);
-
-        self.len = str.len();
-        self.free = false;
-        self.refcount = Cell::new(1);
+        self.str.set(dst);
+        self.len.set(len);
+        self.refcount.set(1);
+        self.free.set(false);
 
         Ok(())
     }
 
     /// Resets a slot so that a pool that owns it may re-use it.
-    pub(crate) const fn release(&mut self) {
-        self.str = [0; LEN];
-        self.len = 0;
-        self.refcount = Cell::new(0);
-        self.free = true;
+    pub(crate) fn release(&self) {
+        self.str.set([0; _]);
+        self.len.set(0);
+        self.refcount.set(0);
+        self.free.set(true);
     }
 
     /// Returns a byte representation of a slot.
     pub(crate) fn as_bytes(&self) -> &[u8] {
-        // SAFETY: both empty and occupied slots are constructed by a `StringPool` and so:
-        //         1. `self.str[...self.len]` is always initialized
-        unsafe { self.str.get_unchecked(..self.len) }
+        // SAFETY: once the `Slot` is acquired the data inside it is frozen.
+        //         Nobody mutates `self.str` or `self.len`, even the `Slot` itself.
+        //         The only exception is `Slot::release()` but it is only called by `Drop` on a `StringRef`
+        //         if the reference is the last one (which is tracked using `refcount` field).
+        let str = unsafe { &*self.str.as_ptr() };
+
+        // SAFETY: empty slot has `len=0` so it's always safe to `.get()` it.
+        //         occupied slot can only be constructed by `.acquire()` method which guarantees validity of the data.
+        unsafe { str.get_unchecked(..self.len.get()) }
     }
 
     /// Returns a string representation of a slot.
     pub(crate) fn as_str(&self) -> &str {
-        // SAFETY: both empty and occupied slots are constructed by a `StringPool` and so:
-        //         1. `self.str[...self.len]` is always initialized
-        //         2. `self.str[...self.len]` is a valid UTF-8 string
+        // SAFETY: `self.as_bytes()` is either an empty slice or a valid UTF-8 string because it was
+        //         constructed based on a valid `&str`.
         unsafe { core::str::from_utf8_unchecked(self.as_bytes()) }
     }
 
-    /// Increments reference count.
     pub(crate) fn inc_refcount(&self) {
-        self.refcount.update(|count|
-                // SAFETY: for an overflow to happen there must be 2^64 `.clone()` calls
-                //         which is unrealistic.
-                unsafe { count.unchecked_add(1) });
+        self.refcount.update(|count| count.wrapping_add(1));
     }
 
-    /// Decrements reference count.
     pub(crate) fn dec_refcount(&self) {
-        self.refcount.update(|count|
-                // SAFETY: `refcount` is incremented on allocation and copying
-                //          and is decremented in `Drop`, so we always have capacity here.
-                unsafe { count.unchecked_sub(1) });
+        self.refcount.update(|count| count.wrapping_sub(1));
     }
 }

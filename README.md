@@ -8,6 +8,12 @@ use string_bath::{StringPool, StringPoolError, StringRef};
 // 2 slots, each may store at most 5 bytes
 let pool = StringPool::<2, 5>::new();
 
+// 6 characters, too long, an error is returned
+assert_eq!(
+    pool.alloc("123456").unwrap_err(),
+    StringPoolError::StringIsTooLong
+);
+
 let foo: StringRef<5> = pool.alloc("foo").unwrap();
 assert_eq!(foo, "foo");
 
@@ -32,10 +38,6 @@ use string_bath::{StringPool, StringPoolError, StringRef};
 
 // 1 slot, max string length = 5
 let pool = StringPool::<1, 5>::new();
-assert_eq!(
-    pool.alloc("123456").unwrap_err(),
-    StringPoolError::StringIsTooLong
-);
 
 let s: StringRef<5> = pool.alloc("12345").unwrap();
 let ptr = unsafe { core::mem::transmute::<StringRef<5>, *const i8>(s) };
